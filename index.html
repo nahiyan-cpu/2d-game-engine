@@ -2,34 +2,28 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>ZenithEngine | Pro Edition</title>
+    <title>ZenithEngine | Professional Web-Studio</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <style>
         .grid-bg { background-image: radial-gradient(#333 1px, transparent 1px); background-size: 20px 20px; }
-        /* High-Contrast Dark Inputs */
-        .property-input { 
-            width: 100%; 
-            background-color: #0f172a !important; 
-            color: #ffffff !important; 
-            border: 1px solid #334155 !important; 
-            padding: 8px; 
-            border-radius: 4px; 
-            font-size: 14px;
+        .prop-input { 
+            @apply w-full bg-gray-800 border border-gray-700 text-white p-2 rounded text-sm focus:border-blue-500 outline-none; 
         }
-        .property-label { color: #94a3b8; text-transform: uppercase; font-size: 10px; font-weight: bold; margin-bottom: 4px; }
+        .prop-label { @apply text-[10px] text-gray-400 uppercase font-bold mb-1 block; }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 h-screen flex flex-col overflow-hidden">
 
-    <!-- Header -->
+    <!-- Top Toolbar -->
     <header class="h-14 bg-gray-800 border-b border-gray-700 flex items-center px-4 justify-between">
-        <h1 class="font-bold text-lg">ZenithEngine</h1>
+        <h1 class="font-bold text-xl tracking-tighter">ZenithEngine</h1>
         <button id="runBtn" class="bg-green-600 hover:bg-green-500 px-6 py-1 rounded font-bold text-sm transition">▶️ RUN GAME</button>
     </header>
 
-    <!-- Main Workspace -->
+    <!-- Main Editor Dashboard -->
     <main class="flex-1 flex overflow-hidden">
+        <!-- Sidebar: Assets -->
         <aside class="w-64 bg-gray-800 p-4 border-r border-gray-700">
             <h2 class="text-xs font-bold text-gray-400 uppercase mb-4">Object Library</h2>
             <button onclick="addGameObject('Player', '#3b82f6')" class="w-full bg-blue-700 p-2 mb-2 rounded hover:bg-blue-600">Add Player</button>
@@ -37,34 +31,36 @@
             <button onclick="addGameObject('Block', '#6b7280')" class="w-full bg-gray-600 p-2 mb-2 rounded hover:bg-gray-500">Add Solid Block</button>
         </aside>
 
-        <section class="flex-1 bg-gray-950 grid-bg relative">
+        <!-- Canvas Workspace -->
+        <section class="flex-1 bg-gray-950 grid-bg relative cursor-crosshair">
             <canvas id="mainCanvas"></canvas>
         </section>
 
+        <!-- Sidebar: Properties -->
         <aside class="w-72 bg-gray-800 p-4 border-l border-gray-700">
             <h2 class="text-xs font-bold text-gray-400 uppercase mb-4">Properties Inspector</h2>
             <div id="inspector" class="space-y-4">
-                <p class="text-gray-500 text-sm italic">Select an object to edit.</p>
+                <p class="text-gray-500 text-sm italic">Select an object on the grid to edit properties.</p>
             </div>
         </aside>
     </main>
 
-    <!-- Visual Scripting -->
+    <!-- Bottom Panel: Logic Builder -->
     <footer class="h-56 bg-gray-800 border-t border-gray-700 p-4 flex flex-col">
         <div class="flex justify-between items-center mb-3">
-            <h2 class="text-xs font-bold text-gray-400 uppercase">Logic Builder</h2>
+            <h2 class="text-xs font-bold text-gray-400 uppercase">Logic Builder (Event Sheet)</h2>
             <button onclick="addRule()" class="bg-blue-700 hover:bg-blue-600 px-3 py-1 rounded text-xs">+ Add New Rule</button>
         </div>
         <div id="rulesContainer" class="flex-1 overflow-y-auto space-y-2 pr-2"></div>
     </footer>
 
-    <!-- Phaser Modal Sandbox -->
-    <div id="gameModal" class="hidden fixed inset-0 bg-black z-50 flex flex-col">
-        <div class="h-12 bg-gray-900 border-b border-gray-700 flex justify-between items-center px-4">
-            <span class="font-bold text-sm">Game Simulation Active</span>
-            <button onclick="closeSimulation()" class="bg-red-700 hover:bg-red-600 px-3 py-1 rounded text-xs">❌ Close Simulation</button>
+    <!-- Game Sandbox Modal -->
+    <div id="gameModal" class="fixed inset-0 bg-black bg-opacity-90 z-50 hidden flex flex-col">
+        <div class="h-14 bg-gray-900 flex justify-between items-center px-6 border-b border-gray-700">
+            <span class="font-bold">Simulation View</span>
+            <button onclick="closeSimulation()" class="bg-red-700 hover:bg-red-600 px-4 py-1 rounded text-xs font-bold">❌ Close Simulation</button>
         </div>
-        <div id="phaserContainer" class="flex-1"></div>
+        <div id="phaserContainer" class="flex-1 w-full h-full relative"></div>
     </div>
 
     <script>
@@ -72,7 +68,7 @@
         const ctx = canvas.getContext('2d');
         let objects = [], rules = [], selectedObj = null, isDragging = false;
 
-        // --- Core ---
+        // --- Core Engine Methods ---
         function addGameObject(name, color) {
             objects.push({ id: Date.now(), name, color, x: 50, y: 50, w: 60, h: 60 });
             draw();
@@ -90,10 +86,12 @@
             });
         }
 
-        // --- Interaction ---
+        // --- Mouse Interaction ---
         canvas.addEventListener('mousedown', e => {
             const rect = canvas.getBoundingClientRect();
-            selectedObj = objects.find(o => e.clientX-rect.left >= o.x && e.clientX-rect.left <= o.x+o.w && e.clientY-rect.top >= o.y && e.clientY-rect.top <= o.y+o.h);
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            selectedObj = objects.find(o => mouseX >= o.x && mouseX <= o.x+o.w && mouseY >= o.y && mouseY <= o.y+o.h);
             isDragging = !!selectedObj;
             updateInspector(); draw();
         });
@@ -109,28 +107,40 @@
 
         canvas.addEventListener('mouseup', () => isDragging = false);
 
+        // --- UI Updates ---
         function updateInspector() {
             const container = document.getElementById('inspector');
             if(!selectedObj) return container.innerHTML = '<p class="text-gray-500 text-sm">Select an object.</p>';
             container.innerHTML = `
-                <div class="flex flex-col"><label class="property-label">Name</label><input class="property-input" value="${selectedObj.name}" oninput="selectedObj.name=this.value"></div>
+                <div class="flex flex-col"><label class="prop-label">Name</label><input class="prop-input" value="${selectedObj.name}" oninput="selectedObj.name=this.value"></div>
                 <div class="grid grid-cols-2 gap-2">
-                    <div class="flex flex-col"><label class="property-label">X Pos</label><input class="property-input" type="number" value="${selectedObj.x}" oninput="selectedObj.x=parseInt(this.value); draw()"></div>
-                    <div class="flex flex-col"><label class="property-label">Y Pos</label><input class="property-input" type="number" value="${selectedObj.y}" oninput="selectedObj.y=parseInt(this.value); draw()"></div>
-                    <div class="flex flex-col"><label class="property-label">Width</label><input class="property-input" type="number" value="${selectedObj.w}" oninput="selectedObj.w=parseInt(this.value); draw()"></div>
-                    <div class="flex flex-col"><label class="property-label">Height</label><input class="property-input" type="number" value="${selectedObj.h}" oninput="selectedObj.h=parseInt(this.value); draw()"></div>
+                    <div class="flex flex-col"><label class="prop-label">X Pos</label><input class="prop-input" type="number" value="${selectedObj.x}" oninput="selectedObj.x=parseInt(this.value); draw()"></div>
+                    <div class="flex flex-col"><label class="prop-label">Y Pos</label><input class="prop-input" type="number" value="${selectedObj.y}" oninput="selectedObj.y=parseInt(this.value); draw()"></div>
+                    <div class="flex flex-col"><label class="prop-label">Width</label><input class="prop-input" type="number" value="${selectedObj.w}" oninput="selectedObj.w=parseInt(this.value); draw()"></div>
+                    <div class="flex flex-col"><label class="prop-label">Height</label><input class="prop-input" type="number" value="${selectedObj.h}" oninput="selectedObj.h=parseInt(this.value); draw()"></div>
                 </div>
             `;
         }
 
-        // --- Simulation ---
+        // --- Logic Builder ---
+        function addRule() { rules.push({ id: Date.now() }); renderRules(); }
+        function renderRules() {
+            document.getElementById('rulesContainer').innerHTML = rules.map(r => `
+                <div class="bg-gray-900 p-2 rounded flex items-center gap-2 text-xs border border-gray-700">
+                    <span>WHEN</span> <select class="bg-gray-800 p-1"><option>Player</option></select> 
+                    <span>THEN</span> <select class="bg-gray-800 p-1"><option>Destroy</option></select>
+                    <button onclick="rules = rules.filter(x=>x.id!=${r.id}); renderRules()" class="ml-auto text-red-400 font-bold px-2">❌</button>
+                </div>
+            `).join('');
+        }
+
+        // --- Sandbox Modal Control ---
         document.getElementById('runBtn').onclick = () => {
             document.getElementById('gameModal').classList.remove('hidden');
-            const config = {
-                type: Phaser.AUTO, width: window.innerWidth, height: window.innerHeight - 48,
-                parent: 'phaserContainer', scene: { create() { this.add.text(10, 10, 'Engine Active: ' + rules.length + ' Rules Loaded', {color:'#fff'}); } }
-            };
-            window.game = new Phaser.Game(config);
+            window.game = new Phaser.Game({
+                type: Phaser.AUTO, width: 800, height: 600, parent: 'phaserContainer',
+                scene: { create() { this.add.text(20, 20, 'Engine Simulation Active', {fontSize:'24px', color:'#fff'}); } }
+            });
         };
 
         function closeSimulation() {
@@ -138,18 +148,7 @@
             if(window.game) window.game.destroy(true);
         }
 
-        // --- Logic ---
-        function addRule() { rules.push({ id: Date.now() }); renderRules(); }
-        function renderRules() {
-            document.getElementById('rulesContainer').innerHTML = rules.map(r => `
-                <div class="bg-gray-900 p-2 rounded flex items-center gap-2 text-xs border border-gray-700">
-                    <span>WHEN</span> <select class="bg-gray-800 p-1"><option>Player</option></select> 
-                    <span>THEN</span> <select class="bg-gray-800 p-1"><option>Destroy</option></select>
-                    <button onclick="rules = rules.filter(x=>x.id!=${r.id}); renderRules()" class="ml-auto text-red-400 px-2">❌</button>
-                </div>
-            `).join('');
-        }
-
+        // --- Window Init ---
         window.onresize = () => { canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight; draw(); };
         window.onresize();
     </script>

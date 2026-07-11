@@ -2,69 +2,90 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>ZenithEngine Pro</title>
+    <title>ZenithEngine - Professional Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
         .grid-bg { background-image: radial-gradient(#333 1px, transparent 1px); background-size: 20px 20px; }
-        .canvas-obj { transition: border 0.2s; }
-        .selected-obj { border: 2px solid #60a5fa !important; box-shadow: 0 0 10px #60a5fa; }
+        .dragging { z-index: 1000; opacity: 0.8; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 h-screen flex flex-col overflow-hidden" x-data="engine()">
 
-    <!-- Top Bar -->
+    <!-- Header -->
     <header class="h-14 bg-gray-800 border-b border-gray-700 flex items-center px-4 justify-between">
-        <h1 class="font-bold text-lg">ZenithEngine</h1>
-        <div class="flex gap-2">
-            <button @click="runGame()" class="bg-green-600 hover:bg-green-500 px-4 py-1 rounded font-bold">▶️ RUN GAME</button>
-            <button @click="exportGame()" class="bg-blue-600 hover:bg-blue-500 px-4 py-1 rounded">💾 Export</button>
+        <h1 class="font-bold text-xl tracking-tight">ZenithEngine</h1>
+        <div class="flex gap-3">
+            <button @click="runGame()" class="bg-green-600 hover:bg-green-500 px-6 py-1 rounded font-bold transition">▶️ RUN GAME</button>
         </div>
     </header>
 
-    <!-- Workspace -->
-    <div class="flex-1 flex overflow-hidden">
-        <aside class="w-64 bg-gray-800 p-4 border-r border-gray-700">
-            <h2 class="font-bold mb-4 uppercase text-xs">Add Objects</h2>
-            <button @click="addObject('player')" class="w-full bg-blue-700 p-2 mb-2 rounded hover:bg-blue-600">Add Player</button>
-            <button @click="addObject('enemy')" class="w-full bg-red-700 p-2 mb-2 rounded hover:bg-red-600">Add Enemy</button>
-            <button @click="addObject('block')" class="w-full bg-gray-600 p-2 mb-2 rounded hover:bg-gray-500">Add Solid Block</button>
+    <!-- Main Workspace -->
+    <main class="flex-1 flex overflow-hidden">
+        <!-- Sidebar Left -->
+        <aside class="w-64 bg-gray-800 p-4 border-r border-gray-700 flex flex-col gap-2">
+            <h2 class="text-xs font-bold text-gray-400 uppercase mb-2">Object Library</h2>
+            <button @click="addObject('Player', '#3b82f6')" class="w-full bg-blue-700 p-2 rounded hover:bg-blue-600">Add Player</button>
+            <button @click="addObject('Enemy', '#ef4444')" class="w-full bg-red-700 p-2 rounded hover:bg-red-600">Add Enemy</button>
+            <button @click="addObject('Block', '#6b7280')" class="w-full bg-gray-600 p-2 rounded hover:bg-gray-500">Add Solid Block</button>
         </aside>
 
-        <section id="workspace" class="flex-1 bg-gray-950 grid-bg relative" @click.self="selected = null">
+        <!-- Canvas -->
+        <section id="workspace" class="flex-1 bg-gray-950 grid-bg relative overflow-hidden cursor-crosshair" @click="selected = null">
             <template x-for="obj in objects" :key="obj.id">
-                <div class="absolute canvas-obj cursor-pointer flex items-center justify-center font-bold text-[10px]"
-                     :class="selected?.id === obj.id ? 'selected-obj' : 'border border-gray-600'"
+                <div class="absolute border-2 cursor-move flex items-center justify-center select-none"
+                     :class="selected?.id === obj.id ? 'border-yellow-400' : 'border-blue-500'"
                      :style="`left: ${obj.x}px; top: ${obj.y}px; width: ${obj.w}px; height: ${obj.h}px; background: ${obj.color}`"
-                     @click.stop="selected = obj">
-                     <span x-text="obj.name"></span>
+                     @mousedown.stop="selectObject(obj)"
+                     @mousemove="dragObject($event, obj)">
+                     <span class="text-[9px] pointer-events-none font-bold" x-text="obj.name"></span>
                 </div>
             </template>
         </section>
 
-        <aside class="w-72 bg-gray-800 p-4 border-l border-gray-700">
-            <h2 class="font-bold mb-4 uppercase text-xs">Properties</h2>
-            <div x-show="selected" class="space-y-3">
-                <input x-model="selected.name" class="w-full bg-gray-900 p-2 rounded text-sm" placeholder="Name">
+        <!-- Sidebar Right -->
+        <aside class="w-72 bg-gray-800 p-4 border-l border-gray-700 overflow-y-auto">
+            <h2 class="text-xs font-bold text-gray-400 uppercase mb-4">Properties Inspector</h2>
+            <div x-show="selected" class="space-y-4">
+                <div><label class="text-[10px] text-gray-400">Object Name</label><input x-model="selected.name" class="w-full bg-gray-900 p-1 rounded text-sm"></div>
                 <div class="grid grid-cols-2 gap-2">
-                    <input type="number" x-model.number="selected.x" class="bg-gray-900 p-2 rounded" placeholder="X">
-                    <input type="number" x-model.number="selected.y" class="bg-gray-900 p-2 rounded" placeholder="Y">
-                    <input type="number" x-model.number="selected.w" class="bg-gray-900 p-2 rounded" placeholder="W">
-                    <input type="number" x-model.number="selected.h" class="bg-gray-900 p-2 rounded" placeholder="H">
+                    <div><label class="text-[10px] text-gray-400">X Position</label><input type="number" x-model.number="selected.x" class="w-full bg-gray-900 p-1 rounded text-sm"></div>
+                    <div><label class="text-[10px] text-gray-400">Y Position</label><input type="number" x-model.number="selected.y" class="w-full bg-gray-900 p-1 rounded text-sm"></div>
+                    <div><label class="text-[10px] text-gray-400">Width</label><input type="number" x-model.number="selected.w" class="w-full bg-gray-900 p-1 rounded text-sm"></div>
+                    <div><label class="text-[10px] text-gray-400">Height</label><input type="number" x-model.number="selected.h" class="w-full bg-gray-900 p-1 rounded text-sm"></div>
                 </div>
-                <input type="number" x-model.number="selected.speed" class="w-full bg-gray-900 p-2 rounded" placeholder="Speed">
+                <div><label class="text-[10px] text-gray-400">Movement Speed</label><input type="number" x-model.number="selected.speed" class="w-full bg-gray-900 p-1 rounded text-sm"></div>
+                <button @click="deleteObject()" class="w-full bg-red-900 text-red-200 py-1 rounded text-xs hover:bg-red-800">Delete Object</button>
             </div>
-            <div x-show="!selected" class="text-gray-500 italic text-sm">Select an object to edit.</div>
+            <div x-show="!selected" class="text-gray-500 text-sm italic">Click an object on the grid to inspect properties.</div>
         </aside>
-    </div>
+    </main>
+
+    <!-- Bottom Panel: Logic Builder -->
+    <footer class="h-40 bg-gray-800 border-t border-gray-700 p-4">
+        <h2 class="text-xs font-bold text-gray-400 uppercase mb-3">Visual Event Sheet / Logic Builder</h2>
+        <div class="space-y-2">
+            <div class="bg-gray-900 p-2 rounded flex gap-2 items-center text-sm">
+                <span>WHEN</span>
+                <select class="bg-gray-800 rounded px-1"><option>Player</option></select>
+                <span>Collides With</span>
+                <select class="bg-gray-800 rounded px-1"><option>Enemy</option><option>Coin</option></select>
+                <span>-> THEN</span>
+                <select class="bg-gray-800 rounded px-1"><option>Destroy Object</option><option>Game Over</option></select>
+            </div>
+        </div>
+    </footer>
 
     <!-- Phaser Modal -->
-    <div id="game-modal" class="hidden fixed inset-0 bg-black z-50 flex flex-col">
-        <div class="h-10 bg-gray-800 flex justify-end px-4 items-center">
-            <button @click="stopGame()" class="text-red-500 font-bold">CLOSE [ESC]</button>
+    <div id="modal" class="hidden fixed inset-0 bg-black z-50 p-4">
+        <div class="flex justify-between mb-2">
+            <h3 class="font-bold">Playback Simulation</h3>
+            <button @click="closeGame()" class="text-red-400">Close Sandbox</button>
         </div>
-        <div id="game-container" class="flex-1"></div>
+        <div id="game-canvas" class="border border-gray-700"></div>
     </div>
 
     <script>
@@ -72,24 +93,29 @@
             return {
                 objects: [],
                 selected: null,
-                addObject(type) {
-                    const colors = { player: '#3b82f6', enemy: '#ef4444', block: '#4b5563' };
-                    this.objects.push({ id: Date.now(), type, name: type, x: 50, y: 50, w: 50, h: 50, speed: 200, color: colors[type] });
+                isDragging: false,
+                
+                addObject(name, color) {
+                    this.objects.push({ id: Date.now(), name, x: 100, y: 100, w: 60, h: 60, speed: 100, color });
                 },
+                selectObject(obj) { this.selected = obj; this.isDragging = true; },
+                deleteObject() { this.objects = this.objects.filter(o => o.id !== this.selected.id); this.selected = null; },
+                
+                dragObject(e, obj) {
+                    if (!this.isDragging) return;
+                    obj.x = e.clientX - 100;
+                    obj.y = e.clientY - 80;
+                },
+
                 runGame() {
-                    document.getElementById('game-modal').classList.remove('hidden');
+                    document.getElementById('modal').classList.remove('hidden');
                     const config = {
-                        type: Phaser.AUTO,
-                        parent: 'game-container',
-                        width: window.innerWidth,
-                        height: window.innerHeight - 40,
+                        type: Phaser.AUTO, width: 800, height: 500, parent: 'game-canvas',
                         physics: { default: 'arcade', arcade: { gravity: { y: 300 } } },
                         scene: {
                             create() {
-                                const scene = this;
-                                const objs = JSON.parse(JSON.stringify(Alpine.store('engine').objects));
-                                // In a real app, map these to physics sprites
-                                this.player = this.physics.add.sprite(100, 100, 'player'); 
+                                this.player = this.physics.add.sprite(400, 100, null).setDisplaySize(50,50).setTint(0x3b82f6);
+                                this.player.setCollideWorldBounds(true);
                                 this.cursors = this.input.keyboard.createCursorKeys();
                             },
                             update() {
@@ -99,13 +125,16 @@
                             }
                         }
                     };
-                    new Phaser.Game(config);
+                    window.gameInstance = new Phaser.Game(config);
                 },
-                stopGame() { document.getElementById('game-modal').classList.add('hidden'); location.reload(); },
-                exportGame() { /* Logic for downloading innerHTML */ }
+                closeGame() {
+                    document.getElementById('modal').classList.add('hidden');
+                    if(window.gameInstance) { window.gameInstance.destroy(true); }
+                }
             }
         }
-        document.addEventListener('alpine:init', () => Alpine.store('engine', { objects: [] }));
+
+        window.addEventListener('mouseup', () => { window.dispatchEvent(new CustomEvent('engine-stop-drag')); });
     </script>
 </body>
 </html>

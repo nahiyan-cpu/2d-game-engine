@@ -92,7 +92,7 @@
         }
 
         function addRule() {
-            rules.push({ id: Date.now(), subj: 'Player', cond: 'Collides With', target: 'None', act: 'Destroy Target Object' });
+            rules.push({ id: Date.now(), subj: 'Player', cond: 'Collides With', target: 'Enemy', act: 'Game Over (Show Red Screen)' });
             renderRules();
         }
 
@@ -131,31 +131,35 @@
                         this.cursors = this.input.keyboard.createCursorKeys();
                         const statics = this.physics.add.staticGroup();
                         const dynamics = this.physics.add.group();
-
-                        // 1. Instantiate all objects at correct coordinates first
+                        
+                        // Parse Database
+                        let playerObj = null;
                         objects.forEach(o => {
-                            let s = (o.name === 'Player') ? dynamics.create(o.x + o.w/2, o.y + o.h/2, null) : statics.create(o.x + o.w/2, o.y + o.h/2, null);
+                            let s = (o.name === 'Player') ? dynamics.create(o.x+o.w/2, o.y+o.h/2, null) : statics.create(o.x+o.w/2, o.y+o.h/2, null);
                             s.setDisplaySize(o.w, o.h).setTint(o.color);
-                            if(o.name === 'Player') { s.setCollideWorldBounds(true); this.player = s; }
+                            if(o.name === 'Player') { s.setCollideWorldBounds(true); playerObj = s; }
                         });
 
-                        // 2. Register collision rules AFTER objects are in place
+                        // Runtime Rules Parsing
                         this.physics.add.collider(dynamics, statics);
-                        rules.forEach(r => {
-                            if(r.act === 'Game Over (Show Red Screen)') {
-                                this.physics.add.overlap(this.player, statics, () => {
-                                    this.physics.pause();
-                                    this.cameras.main.setBackgroundColor('#ff0000');
-                                });
-                            }
-                        });
+                        if(playerObj) {
+                            rules.forEach(r => {
+                                if(r.act === 'Game Over (Show Red Screen)') {
+                                    this.physics.add.overlap(playerObj, statics, () => {
+                                        this.physics.pause();
+                                        this.add.text(400, 225, 'GAME OVER - Click Close to Edit', {fontSize: '32px', color: '#7f1d1d', backgroundColor: '#fca5a5', padding: 10}).setOrigin(0.5);
+                                    });
+                                }
+                            });
+                        }
+                        this.player = playerObj;
                     },
                     update: function() {
                         if(this.player) {
                             if (this.cursors.left.isDown) this.player.setVelocityX(-200);
                             else if (this.cursors.right.isDown) this.player.setVelocityX(200);
                             else this.player.setVelocityX(0);
-                            if (this.cursors.up.isDown && this.player.body.touching.down) this.player.setVelocityY(-400);
+                            if (this.cursors.up.isDown && this.player.body.touching.down) this.player.setVelocityY(-500);
                         }
                     }
                 }

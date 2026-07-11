@@ -129,12 +129,17 @@
                 scene: {
                     create: function() {
                         this.cursors = this.input.keyboard.createCursorKeys();
-                        const statics = this.physics.add.staticGroup(), dynamics = this.physics.add.group();
+                        const statics = this.physics.add.staticGroup();
+                        const dynamics = this.physics.add.group();
+
+                        // 1. Instantiate all objects at correct coordinates first
                         objects.forEach(o => {
-                            let s = (o.name === 'Player') ? dynamics.create(o.x+o.w/2, o.y+o.h/2, null) : statics.create(o.x+o.w/2, o.y+o.h/2, null);
+                            let s = (o.name === 'Player') ? dynamics.create(o.x + o.w/2, o.y + o.h/2, null) : statics.create(o.x + o.w/2, o.y + o.h/2, null);
                             s.setDisplaySize(o.w, o.h).setTint(o.color);
                             if(o.name === 'Player') { s.setCollideWorldBounds(true); this.player = s; }
                         });
+
+                        // 2. Register collision rules AFTER objects are in place
                         this.physics.add.collider(dynamics, statics);
                         rules.forEach(r => {
                             if(r.act === 'Game Over (Show Red Screen)') {

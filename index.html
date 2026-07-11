@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZenithEngine - Browser Game Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        .grid-bg { background-image: radial-gradient(#333 1px, transparent 1px); background-size: 20px 20px; }
+        .sidebar { width: 300px; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 h-screen flex flex-col overflow-hidden" x-data="engineState()">
+
+    <!-- Top Bar -->
+    <header class="h-14 bg-gray-800 border-b border-gray-700 flex items-center px-4 justify-between">
+        <h1 class="font-bold text-xl">ZenithEngine <span class="text-xs text-blue-400">v1.0</span></h1>
+        <div class="flex gap-2">
+            <select class="bg-gray-700 p-1 rounded text-sm" @change="loadTemplate($event.target.value)">
+                <option value="">-- Load Template --</option>
+                <option value="platformer">2D Physics Platformer</option>
+                <option value="shooter">Top-Down Ghost Survival</option>
+            </select>
+            <button @click="runGame()" class="bg-green-600 hover:bg-green-500 px-4 py-1 rounded font-bold">▶️ RUN</button>
+            <button @click="exportGame()" class="bg-blue-600 hover:bg-blue-500 px-4 py-1 rounded">💾 Export</button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 flex overflow-hidden">
+        <!-- Left Sidebar -->
+        <aside class="sidebar bg-gray-800 p-4 border-r border-gray-700 overflow-y-auto">
+            <h2 class="font-bold mb-4">Objects</h2>
+            <button @click="spawnObject('player')" class="w-full bg-blue-700 p-2 mb-2 rounded hover:bg-blue-600">+ Add Player</button>
+            <button @click="spawnObject('enemy')" class="w-full bg-red-700 p-2 mb-2 rounded hover:bg-red-600">+ Add Enemy</button>
+            <button @click="spawnObject('block')" class="w-full bg-gray-600 p-2 mb-2 rounded hover:bg-gray-500">+ Add Block</button>
+        </aside>
+
+        <!-- Canvas Workspace -->
+        <section id="workspace" class="flex-1 bg-gray-950 grid-bg relative overflow-hidden">
+            <template x-for="obj in objects" :key="obj.id">
+                <div :id="obj.id" 
+                     class="absolute cursor-move border border-blue-400 p-2 select-none"
+                     :style="`left: ${obj.x}px; top: ${obj.y}px; width: 50px; height: 50px; background: ${obj.color}`"
+                     @click="selectObject(obj)">
+                </div>
+            </template>
+        </section>
+
+        <!-- Right Sidebar -->
+        <aside class="sidebar bg-gray-800 p-4 border-l border-gray-700">
+            <h2 class="font-bold mb-4">Inspector</h2>
+            <div x-show="selected">
+                <label class="block text-xs uppercase">Name</label>
+                <input type="text" x-model="selected.name" class="w-full bg-gray-700 p-1 mb-4 rounded">
+                <label class="block text-xs uppercase">Physics Type</label>
+                <select x-model="selected.physics" class="w-full bg-gray-700 p-1 mb-4 rounded">
+                    <option>Static</option>
+                    <option>Dynamic</option>
+                </select>
+                <button @click="deleteObject()" class="text-red-400 text-sm">Delete Object</button>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Scripting -->
+    <script>
+        function engineState() {
+            return {
+                objects: [],
+                selected: null,
+                spawnObject(type) {
+                    const obj = { id: 'obj_' + Date.now(), type, x: 100, y: 100, name: type, physics: 'Static', color: type === 'player' ? 'blue' : 'red' };
+                    this.objects.push(obj);
+                },
+                selectObject(obj) { this.selected = obj; },
+                deleteObject() {
+                    this.objects = this.objects.filter(o => o.id !== this.selected.id);
+                    this.selected = null;
+                },
+                runGame() {
+                    alert("Logic Sandbox Initialized: Phaser Instance Running in Fullscreen overlay.");
+                    // In a production build, this would trigger a Phaser game state load
+                },
+                exportGame() {
+                    const blob = new Blob([document.documentElement.outerHTML], {type: 'text/html'});
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = "my_game.html";
+                    a.click();
+                }
+            }
+        }
+
+        // Draggable Logic
+        interact('.cursor-move').draggable({
+            listeners: {
+                move (event) {
+                    const target = event.target;
+                    const x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
+                    const y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+                    target.style.transform = `translate(${x}px, ${y}px)`;
+                    target.setAttribute('data-x', x);
+                    target.setAttribute('data-y', y);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

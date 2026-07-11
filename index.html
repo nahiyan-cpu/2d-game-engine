@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>ZenithEngine | Code-Driven Engine</title>
+    <title>ZenithEngine | Live Code Compiler</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <style>
@@ -36,17 +36,17 @@
         </aside>
     </main>
 
-    <!-- Code Editor Panel -->
     <footer class="h-56 bg-gray-900 border-t border-gray-700 p-4 flex flex-col">
         <h2 class="text-xs font-bold text-gray-400 uppercase mb-2">📜 GAME LOGIC SCRIPTER (JAVASCRIPT)</h2>
-        <textarea id="codeEditor" class="w-full flex-1 bg-black text-green-400 p-3 code-font text-sm border border-gray-700 focus:outline-none focus:border-green-600 resize-none">// Write your custom 2D game logic loops here!
+        <textarea id="codeEditor" class="w-full flex-1 bg-black text-green-400 p-3 code-font text-sm border border-gray-700 focus:outline-none focus:border-green-600 resize-none">// Dynamic logic script
 if (keys.left.isDown) player.setVelocityX(-200);
-if (keys.right.isDown) player.setVelocityX(200);
-if (!keys.left.isDown && !keys.right.isDown) player.setVelocityX(0);
+else if (keys.right.isDown) player.setVelocityX(200);
+else player.setVelocityX(0);
+
 if (keys.up.isDown && player.body.touching.down) player.setVelocityY(-400);
 
 physics.overlap(player, enemy, () => {
-    gameOver();
+    showLoseScreen();
 });</textarea>
     </footer>
 
@@ -118,27 +118,38 @@ physics.overlap(player, enemy, () => {
                 scene: {
                     create: function() {
                         this.keys = this.input.keyboard.createCursorKeys();
-                        this.physics.world.setBounds(0, 0, 800, 500);
                         const statics = this.physics.add.staticGroup();
                         const dynamics = this.physics.add.group();
+                        
+                        this.state = {
+                            player: null, enemy: null, physics: this.physics,
+                            keys: this.keys, score: 0
+                        };
 
-                        this.gameObjMap = {};
                         objects.forEach(o => {
                             let s = (o.name === 'Player') ? dynamics.create(o.x+o.w/2, o.y+o.h/2, null) : statics.create(o.x+o.w/2, o.y+o.h/2, null);
                             s.setDisplaySize(o.w, o.h).setTint(o.color);
-                            if(o.name === 'Player') { s.setCollideWorldBounds(true); this.player = s; }
-                            if(o.name === 'Enemy') this.enemy = s;
+                            if(o.name === 'Player') { s.setCollideWorldBounds(true); this.state.player = s; }
+                            if(o.name === 'Enemy') this.state.enemy = s;
                         });
 
                         this.physics.add.collider(dynamics, statics);
-                        this.gameOver = () => {
+
+                        // Expose API to Code Editor
+                        this.state.showLoseScreen = () => {
                             this.physics.pause();
-                            this.add.text(400, 250, 'GAME OVER', {fontSize: '60px', color: '#ff0000', fontStyle: 'bold'}).setOrigin(0.5);
+                            this.add.text(400, 250, 'GAME OVER', {fontSize: '60px', color: '#ff0000'}).setOrigin(0.5);
                         };
+
+                        // Build Dynamic Function for Script Injection
+                        const userCode = document.getElementById('codeEditor').value;
+                        this.execScript = new Function('player', 'enemy', 'keys', 'physics', 'showLoseScreen', userCode);
                     },
                     update: function() {
-                        const player = this.player, enemy = this.enemy, keys = this.keys, physics = this.physics, gameOver = this.gameOver;
-                        try { eval(document.getElementById('codeEditor').value); } catch(e) { console.error("Script Error:", e); }
+                        try {
+                            const { player, enemy, keys, physics, showLoseScreen } = this.state;
+                            if (player) this.execScript(player, enemy, keys, physics, showLoseScreen);
+                        } catch(e) { console.warn("Logic Error:", e.message); }
                     }
                 }
             });

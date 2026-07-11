@@ -2,12 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>ZenithEngine | Production Build</title>
+    <title>ZenithEngine | Pro Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <style>
         .grid-bg { background-image: radial-gradient(#333 1px, transparent 1px); background-size: 20px 20px; }
-        .property-label { @apply text-[10px] text-gray-400 uppercase font-bold mb-1; }
+        .property-label { @apply text-[10px] text-gray-400 uppercase font-bold mb-1 block; }
         .property-input { @apply w-full bg-gray-900 border border-gray-700 p-1.5 rounded text-sm text-white mb-3; }
     </style>
 </head>
@@ -43,16 +42,13 @@
     </main>
 
     <!-- Visual Scripting -->
-    <footer class="h-40 bg-gray-800 border-t border-gray-700 p-4 flex flex-col">
-        <h2 class="text-xs font-bold text-gray-400 uppercase mb-3">Logic Builder</h2>
-        <div class="flex gap-2 items-center bg-gray-900 p-3 rounded">
-            <span>WHEN</span>
-            <select class="bg-gray-700 p-1 rounded"><option>Player</option><option>Enemy</option></select>
-            <span>Collides With</span>
-            <select class="bg-gray-700 p-1 rounded"><option>Coin</option><option>Solid Block</option></select>
-            <span>THEN</span>
-            <select class="bg-gray-700 p-1 rounded"><option>Destroy</option><option>Game Over</option></select>
-            <button class="bg-blue-600 px-3 py-1 rounded text-xs ml-auto">Add Rule</button>
+    <footer class="h-64 bg-gray-800 border-t border-gray-700 p-4 flex flex-col">
+        <div class="flex justify-between items-center mb-3">
+            <h2 class="text-xs font-bold text-gray-400 uppercase">Logic Builder (Event Sheet)</h2>
+            <button onclick="addRule()" class="bg-blue-700 hover:bg-blue-600 px-3 py-1 rounded text-xs">+ Add New Rule</button>
+        </div>
+        <div id="rulesContainer" class="flex-1 overflow-y-auto space-y-2 pr-2">
+            <!-- Rules injected here -->
         </div>
     </footer>
 
@@ -60,18 +56,45 @@
         const canvas = document.getElementById('mainCanvas');
         const ctx = canvas.getContext('2d');
         let objects = [];
+        let rules = [];
         let selectedObj = null;
         let isDragging = false;
+
+        function addRule() {
+            rules.push({ id: Date.now() });
+            renderRules();
+        }
+
+        function deleteRule(id) {
+            rules = rules.filter(r => r.id !== id);
+            renderRules();
+        }
+
+        function renderRules() {
+            const container = document.getElementById('rulesContainer');
+            container.innerHTML = rules.map(rule => `
+                <div class="bg-gray-900 p-2 rounded flex gap-2 items-center text-sm border border-gray-700">
+                    <span>WHEN</span>
+                    <select class="bg-gray-800 p-1 rounded"><option>Player</option><option>Enemy</option></select>
+                    <span>Collides</span>
+                    <select class="bg-gray-800 p-1 rounded"><option>Block</option><option>Coin</option></select>
+                    <span>THEN</span>
+                    <select class="bg-gray-800 p-1 rounded"><option>Destroy</option><option>Score +10</option></select>
+                    <button onclick="deleteRule(${rule.id})" class="ml-auto text-red-500 font-bold px-2">❌</button>
+                </div>
+            `).join('');
+        }
 
         function resize() {
             canvas.width = canvas.parentElement.clientWidth;
             canvas.height = canvas.parentElement.clientHeight;
+            draw();
         }
         window.onresize = resize;
         resize();
 
         function addGameObject(name, color) {
-            objects.push({ id: Date.now(), name, color, x: 50, y: 50, w: 60, h: 60, speed: 100 });
+            objects.push({ id: Date.now(), name, color, x: 50, y: 50, w: 60, h: 60 });
             draw();
         }
 
@@ -81,8 +104,7 @@
                 ctx.fillStyle = obj.color;
                 ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
                 if(selectedObj === obj) {
-                    ctx.strokeStyle = '#fbbf24';
-                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 3;
                     ctx.strokeRect(obj.x-2, obj.y-2, obj.w+4, obj.h+4);
                 }
             });
@@ -92,11 +114,9 @@
             const rect = canvas.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
-
             selectedObj = objects.find(o => mouseX >= o.x && mouseX <= o.x + o.w && mouseY >= o.y && mouseY <= o.y + o.h);
             isDragging = !!selectedObj;
-            updateInspector();
-            draw();
+            updateInspector(); draw();
         });
 
         canvas.addEventListener('mousemove', e => {
@@ -104,8 +124,7 @@
                 const rect = canvas.getBoundingClientRect();
                 selectedObj.x = e.clientX - rect.left - (selectedObj.w / 2);
                 selectedObj.y = e.clientY - rect.top - (selectedObj.h / 2);
-                updateInspector();
-                draw();
+                updateInspector(); draw();
             }
         });
 
@@ -118,19 +137,17 @@
                 return;
             }
             container.innerHTML = `
-                <label class="property-label">Name</label>
-                <input class="property-input" value="${selectedObj.name}" oninput="selectedObj.name=this.value">
+                <label class="property-label">Name</label><input class="property-input" value="${selectedObj.name}" oninput="selectedObj.name=this.value">
                 <div class="grid grid-cols-2 gap-2">
                     <div><label class="property-label">X Pos</label><input class="property-input" type="number" value="${selectedObj.x}" oninput="selectedObj.x=parseInt(this.value); draw()"></div>
                     <div><label class="property-label">Y Pos</label><input class="property-input" type="number" value="${selectedObj.y}" oninput="selectedObj.y=parseInt(this.value); draw()"></div>
-                    <div><label class="property-label">Width</label><input class="property-input" type="number" value="${selectedObj.w}" oninput="selectedObj.w=parseInt(this.value); draw()"></div>
-                    <div><label class="property-label">Height</label><input class="property-input" type="number" value="${selectedObj.h}" oninput="selectedObj.h=parseInt(this.value); draw()"></div>
                 </div>
             `;
         }
 
         document.getElementById('runBtn').onclick = () => {
-            alert("Exporting project to Phaser Sandbox... Starting simulation.");
+            console.log("Simulating game with rules:", rules);
+            alert("Simulation Active! " + rules.length + " rules loaded into engine.");
         };
     </script>
 </body>

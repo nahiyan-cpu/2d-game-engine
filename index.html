@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>ZenithEngine | Live Code Compiler</title>
+    <title>ZenithEngine | Final Build</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <style>
@@ -38,13 +38,15 @@
 
     <footer class="h-56 bg-gray-900 border-t border-gray-700 p-4 flex flex-col">
         <h2 class="text-xs font-bold text-gray-400 uppercase mb-2">📜 GAME LOGIC SCRIPTER (JAVASCRIPT)</h2>
-        <textarea id="codeEditor" class="w-full flex-1 bg-black text-green-400 p-3 code-font text-sm border border-gray-700 focus:outline-none focus:border-green-600 resize-none">// Dynamic logic script
+        <textarea id="codeEditor" class="w-full flex-1 bg-black text-green-400 p-3 code-font text-sm border border-gray-700 focus:outline-none focus:border-green-600 resize-none">// প্লেয়ার মুভমেন্ট
 if (keys.left.isDown) player.setVelocityX(-200);
 else if (keys.right.isDown) player.setVelocityX(200);
 else player.setVelocityX(0);
 
+// জাম্প
 if (keys.up.isDown && player.body.touching.down) player.setVelocityY(-400);
 
+// এনিমির সাথে সংঘর্ষ
 physics.overlap(player, enemy, () => {
     showLoseScreen();
 });</textarea>
@@ -121,10 +123,10 @@ physics.overlap(player, enemy, () => {
                         const statics = this.physics.add.staticGroup();
                         const dynamics = this.physics.add.group();
                         
-                        this.state = {
-                            player: null, enemy: null, physics: this.physics,
-                            keys: this.keys, score: 0
-                        };
+                        this.score = 0;
+                        this.scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '24px', fill: '#ffffff' });
+
+                        this.state = { player: null, enemy: null, physics: this.physics, keys: this.keys, score: 0 };
 
                         objects.forEach(o => {
                             let s = (o.name === 'Player') ? dynamics.create(o.x+o.w/2, o.y+o.h/2, null) : statics.create(o.x+o.w/2, o.y+o.h/2, null);
@@ -135,26 +137,23 @@ physics.overlap(player, enemy, () => {
 
                         this.physics.add.collider(dynamics, statics);
 
-                        // Expose API to Code Editor
-                        this.state.showLoseScreen = () => {
+                        this.updateScore = (points) => { this.score += points; this.scoreText.setText('Score: ' + this.score); };
+                        this.showLoseScreen = () => {
                             this.physics.pause();
-                            this.add.text(400, 250, 'GAME OVER', {fontSize: '60px', color: '#ff0000'}).setOrigin(0.5);
+                            this.add.text(400, 250, 'GAME OVER\nFinal Score: ' + this.score, { fontSize: '50px', color: '#ff0000', align: 'center', backgroundColor: '#000' }).setOrigin(0.5);
                         };
-
-                        // Build Dynamic Function for Script Injection
-                        const userCode = document.getElementById('codeEditor').value;
-                        this.execScript = new Function('player', 'enemy', 'keys', 'physics', 'showLoseScreen', userCode);
+                        
+                        this.execScript = new Function('player', 'enemy', 'keys', 'physics', 'updateScore', 'showLoseScreen', document.getElementById('codeEditor').value);
                     },
                     update: function() {
                         try {
-                            const { player, enemy, keys, physics, showLoseScreen } = this.state;
-                            if (player) this.execScript(player, enemy, keys, physics, showLoseScreen);
+                            const { player, enemy, keys, physics } = this.state;
+                            if (player) this.execScript(player, enemy, keys, physics, this.updateScore, this.showLoseScreen);
                         } catch(e) { console.warn("Logic Error:", e.message); }
                     }
                 }
             });
         };
-
         window.onresize = () => { canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight; draw(); };
         window.onresize();
     </script>

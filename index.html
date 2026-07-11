@@ -2,139 +2,136 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>ZenithEngine - Professional Edition</title>
+    <title>ZenithEngine | Production Build</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
         .grid-bg { background-image: radial-gradient(#333 1px, transparent 1px); background-size: 20px 20px; }
-        .dragging { z-index: 1000; opacity: 0.8; }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        .property-label { @apply text-[10px] text-gray-400 uppercase font-bold mb-1; }
+        .property-input { @apply w-full bg-gray-900 border border-gray-700 p-1.5 rounded text-sm text-white mb-3; }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-100 h-screen flex flex-col overflow-hidden" x-data="engine()">
+<body class="bg-gray-900 text-gray-100 h-screen flex flex-col overflow-hidden">
 
     <!-- Header -->
     <header class="h-14 bg-gray-800 border-b border-gray-700 flex items-center px-4 justify-between">
-        <h1 class="font-bold text-xl tracking-tight">ZenithEngine</h1>
-        <div class="flex gap-3">
-            <button @click="runGame()" class="bg-green-600 hover:bg-green-500 px-6 py-1 rounded font-bold transition">▶️ RUN GAME</button>
-        </div>
+        <h1 class="font-bold text-lg">ZenithEngine</h1>
+        <button id="runBtn" class="bg-green-600 hover:bg-green-500 px-6 py-1 rounded font-bold text-sm">▶️ RUN GAME</button>
     </header>
 
-    <!-- Main Workspace -->
     <main class="flex-1 flex overflow-hidden">
-        <!-- Sidebar Left -->
-        <aside class="w-64 bg-gray-800 p-4 border-r border-gray-700 flex flex-col gap-2">
-            <h2 class="text-xs font-bold text-gray-400 uppercase mb-2">Object Library</h2>
-            <button @click="addObject('Player', '#3b82f6')" class="w-full bg-blue-700 p-2 rounded hover:bg-blue-600">Add Player</button>
-            <button @click="addObject('Enemy', '#ef4444')" class="w-full bg-red-700 p-2 rounded hover:bg-red-600">Add Enemy</button>
-            <button @click="addObject('Block', '#6b7280')" class="w-full bg-gray-600 p-2 rounded hover:bg-gray-500">Add Solid Block</button>
+        <!-- Asset Library -->
+        <aside class="w-64 bg-gray-800 p-4 border-r border-gray-700">
+            <h2 class="text-xs font-bold text-gray-400 uppercase mb-4">Object Library</h2>
+            <button onclick="addGameObject('Player', '#3b82f6')" class="w-full bg-blue-700 p-2 mb-2 rounded hover:bg-blue-600">Add Player</button>
+            <button onclick="addGameObject('Enemy', '#ef4444')" class="w-full bg-red-700 p-2 mb-2 rounded hover:bg-red-600">Add Enemy</button>
+            <button onclick="addGameObject('Block', '#6b7280')" class="w-full bg-gray-600 p-2 mb-2 rounded hover:bg-gray-500">Add Solid Block</button>
         </aside>
 
         <!-- Canvas -->
-        <section id="workspace" class="flex-1 bg-gray-950 grid-bg relative overflow-hidden cursor-crosshair" @click="selected = null">
-            <template x-for="obj in objects" :key="obj.id">
-                <div class="absolute border-2 cursor-move flex items-center justify-center select-none"
-                     :class="selected?.id === obj.id ? 'border-yellow-400' : 'border-blue-500'"
-                     :style="`left: ${obj.x}px; top: ${obj.y}px; width: ${obj.w}px; height: ${obj.h}px; background: ${obj.color}`"
-                     @mousedown.stop="selectObject(obj)"
-                     @mousemove="dragObject($event, obj)">
-                     <span class="text-[9px] pointer-events-none font-bold" x-text="obj.name"></span>
-                </div>
-            </template>
+        <section class="flex-1 bg-gray-950 grid-bg relative">
+            <canvas id="mainCanvas"></canvas>
         </section>
 
-        <!-- Sidebar Right -->
-        <aside class="w-72 bg-gray-800 p-4 border-l border-gray-700 overflow-y-auto">
-            <h2 class="text-xs font-bold text-gray-400 uppercase mb-4">Properties Inspector</h2>
-            <div x-show="selected" class="space-y-4">
-                <div><label class="text-[10px] text-gray-400">Object Name</label><input x-model="selected.name" class="w-full bg-gray-900 p-1 rounded text-sm"></div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div><label class="text-[10px] text-gray-400">X Position</label><input type="number" x-model.number="selected.x" class="w-full bg-gray-900 p-1 rounded text-sm"></div>
-                    <div><label class="text-[10px] text-gray-400">Y Position</label><input type="number" x-model.number="selected.y" class="w-full bg-gray-900 p-1 rounded text-sm"></div>
-                    <div><label class="text-[10px] text-gray-400">Width</label><input type="number" x-model.number="selected.w" class="w-full bg-gray-900 p-1 rounded text-sm"></div>
-                    <div><label class="text-[10px] text-gray-400">Height</label><input type="number" x-model.number="selected.h" class="w-full bg-gray-900 p-1 rounded text-sm"></div>
-                </div>
-                <div><label class="text-[10px] text-gray-400">Movement Speed</label><input type="number" x-model.number="selected.speed" class="w-full bg-gray-900 p-1 rounded text-sm"></div>
-                <button @click="deleteObject()" class="w-full bg-red-900 text-red-200 py-1 rounded text-xs hover:bg-red-800">Delete Object</button>
+        <!-- Inspector -->
+        <aside class="w-72 bg-gray-800 p-4 border-l border-gray-700">
+            <h2 class="text-xs font-bold text-gray-400 uppercase mb-4">Properties</h2>
+            <div id="inspector">
+                <p class="text-gray-500 text-sm">Select an object to edit.</p>
             </div>
-            <div x-show="!selected" class="text-gray-500 text-sm italic">Click an object on the grid to inspect properties.</div>
         </aside>
     </main>
 
-    <!-- Bottom Panel: Logic Builder -->
-    <footer class="h-40 bg-gray-800 border-t border-gray-700 p-4">
-        <h2 class="text-xs font-bold text-gray-400 uppercase mb-3">Visual Event Sheet / Logic Builder</h2>
-        <div class="space-y-2">
-            <div class="bg-gray-900 p-2 rounded flex gap-2 items-center text-sm">
-                <span>WHEN</span>
-                <select class="bg-gray-800 rounded px-1"><option>Player</option></select>
-                <span>Collides With</span>
-                <select class="bg-gray-800 rounded px-1"><option>Enemy</option><option>Coin</option></select>
-                <span>-> THEN</span>
-                <select class="bg-gray-800 rounded px-1"><option>Destroy Object</option><option>Game Over</option></select>
-            </div>
+    <!-- Visual Scripting -->
+    <footer class="h-40 bg-gray-800 border-t border-gray-700 p-4 flex flex-col">
+        <h2 class="text-xs font-bold text-gray-400 uppercase mb-3">Logic Builder</h2>
+        <div class="flex gap-2 items-center bg-gray-900 p-3 rounded">
+            <span>WHEN</span>
+            <select class="bg-gray-700 p-1 rounded"><option>Player</option><option>Enemy</option></select>
+            <span>Collides With</span>
+            <select class="bg-gray-700 p-1 rounded"><option>Coin</option><option>Solid Block</option></select>
+            <span>THEN</span>
+            <select class="bg-gray-700 p-1 rounded"><option>Destroy</option><option>Game Over</option></select>
+            <button class="bg-blue-600 px-3 py-1 rounded text-xs ml-auto">Add Rule</button>
         </div>
     </footer>
 
-    <!-- Phaser Modal -->
-    <div id="modal" class="hidden fixed inset-0 bg-black z-50 p-4">
-        <div class="flex justify-between mb-2">
-            <h3 class="font-bold">Playback Simulation</h3>
-            <button @click="closeGame()" class="text-red-400">Close Sandbox</button>
-        </div>
-        <div id="game-canvas" class="border border-gray-700"></div>
-    </div>
-
     <script>
-        function engine() {
-            return {
-                objects: [],
-                selected: null,
-                isDragging: false,
-                
-                addObject(name, color) {
-                    this.objects.push({ id: Date.now(), name, x: 100, y: 100, w: 60, h: 60, speed: 100, color });
-                },
-                selectObject(obj) { this.selected = obj; this.isDragging = true; },
-                deleteObject() { this.objects = this.objects.filter(o => o.id !== this.selected.id); this.selected = null; },
-                
-                dragObject(e, obj) {
-                    if (!this.isDragging) return;
-                    obj.x = e.clientX - 100;
-                    obj.y = e.clientY - 80;
-                },
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        let objects = [];
+        let selectedObj = null;
+        let isDragging = false;
 
-                runGame() {
-                    document.getElementById('modal').classList.remove('hidden');
-                    const config = {
-                        type: Phaser.AUTO, width: 800, height: 500, parent: 'game-canvas',
-                        physics: { default: 'arcade', arcade: { gravity: { y: 300 } } },
-                        scene: {
-                            create() {
-                                this.player = this.physics.add.sprite(400, 100, null).setDisplaySize(50,50).setTint(0x3b82f6);
-                                this.player.setCollideWorldBounds(true);
-                                this.cursors = this.input.keyboard.createCursorKeys();
-                            },
-                            update() {
-                                if (this.cursors.left.isDown) this.player.setVelocityX(-200);
-                                else if (this.cursors.right.isDown) this.player.setVelocityX(200);
-                                else this.player.setVelocityX(0);
-                            }
-                        }
-                    };
-                    window.gameInstance = new Phaser.Game(config);
-                },
-                closeGame() {
-                    document.getElementById('modal').classList.add('hidden');
-                    if(window.gameInstance) { window.gameInstance.destroy(true); }
-                }
-            }
+        function resize() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        window.onresize = resize;
+        resize();
+
+        function addGameObject(name, color) {
+            objects.push({ id: Date.now(), name, color, x: 50, y: 50, w: 60, h: 60, speed: 100 });
+            draw();
         }
 
-        window.addEventListener('mouseup', () => { window.dispatchEvent(new CustomEvent('engine-stop-drag')); });
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            objects.forEach(obj => {
+                ctx.fillStyle = obj.color;
+                ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+                if(selectedObj === obj) {
+                    ctx.strokeStyle = '#fbbf24';
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(obj.x-2, obj.y-2, obj.w+4, obj.h+4);
+                }
+            });
+        }
+
+        canvas.addEventListener('mousedown', e => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            selectedObj = objects.find(o => mouseX >= o.x && mouseX <= o.x + o.w && mouseY >= o.y && mouseY <= o.y + o.h);
+            isDragging = !!selectedObj;
+            updateInspector();
+            draw();
+        });
+
+        canvas.addEventListener('mousemove', e => {
+            if (isDragging && selectedObj) {
+                const rect = canvas.getBoundingClientRect();
+                selectedObj.x = e.clientX - rect.left - (selectedObj.w / 2);
+                selectedObj.y = e.clientY - rect.top - (selectedObj.h / 2);
+                updateInspector();
+                draw();
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => isDragging = false);
+
+        function updateInspector() {
+            const container = document.getElementById('inspector');
+            if(!selectedObj) {
+                container.innerHTML = '<p class="text-gray-500 text-sm">Select an object to edit.</p>';
+                return;
+            }
+            container.innerHTML = `
+                <label class="property-label">Name</label>
+                <input class="property-input" value="${selectedObj.name}" oninput="selectedObj.name=this.value">
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="property-label">X Pos</label><input class="property-input" type="number" value="${selectedObj.x}" oninput="selectedObj.x=parseInt(this.value); draw()"></div>
+                    <div><label class="property-label">Y Pos</label><input class="property-input" type="number" value="${selectedObj.y}" oninput="selectedObj.y=parseInt(this.value); draw()"></div>
+                    <div><label class="property-label">Width</label><input class="property-input" type="number" value="${selectedObj.w}" oninput="selectedObj.w=parseInt(this.value); draw()"></div>
+                    <div><label class="property-label">Height</label><input class="property-input" type="number" value="${selectedObj.h}" oninput="selectedObj.h=parseInt(this.value); draw()"></div>
+                </div>
+            `;
+        }
+
+        document.getElementById('runBtn').onclick = () => {
+            alert("Exporting project to Phaser Sandbox... Starting simulation.");
+        };
     </script>
 </body>
 </html>

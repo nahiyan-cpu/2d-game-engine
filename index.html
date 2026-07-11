@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>ZenithEngine | Pro Simulation</title>
+    <title>ZenithEngine | Live Simulation Engine</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <style>
@@ -11,14 +11,12 @@
 </head>
 <body class="bg-gray-900 text-gray-100 h-screen flex flex-col overflow-hidden">
 
-    <!-- Header -->
     <header class="h-14 bg-gray-800 border-b border-gray-700 flex items-center px-4 justify-between">
         <h1 class="font-bold text-xl tracking-tighter">ZenithEngine</h1>
         <button id="runBtn" class="bg-green-600 hover:bg-green-500 px-6 py-1 rounded font-bold text-sm transition">▶️ RUN GAME</button>
     </header>
 
     <main class="flex-1 flex overflow-hidden">
-        <!-- Sidebar: Objects -->
         <aside class="w-64 bg-gray-800 p-4 border-r border-gray-700">
             <h2 class="text-xs font-bold text-gray-400 uppercase mb-4">Object Library</h2>
             <button onclick="addGameObject('Player', 0x3b82f6)" class="w-full bg-blue-700 p-2 mb-2 rounded hover:bg-blue-600">Add Player</button>
@@ -26,19 +24,16 @@
             <button onclick="addGameObject('Block', 0x6b7280)" class="w-full bg-gray-600 p-2 mb-2 rounded hover:bg-gray-500">Add Solid Block</button>
         </aside>
 
-        <!-- Canvas -->
         <section class="flex-1 bg-gray-950 grid-bg relative cursor-crosshair">
             <canvas id="mainCanvas"></canvas>
         </section>
 
-        <!-- Sidebar: Inspector -->
         <aside class="w-72 bg-gray-800 p-4 border-l border-gray-700">
             <h2 class="text-xs font-bold text-gray-400 uppercase mb-4">Properties Inspector</h2>
-            <div id="inspector" class="space-y-4"><p class="text-gray-500 text-sm italic">Select an object to edit.</p></div>
+            <div id="inspector" class="space-y-4"><p class="text-gray-500 text-sm italic">Select object to edit.</p></div>
         </aside>
     </main>
 
-    <!-- Logic Builder -->
     <footer class="h-56 bg-gray-800 border-t border-gray-700 p-4 flex flex-col">
         <div class="flex justify-between items-center mb-3">
             <h2 class="text-xs font-bold text-gray-400 uppercase">Logic Builder</h2>
@@ -53,7 +48,7 @@
         let objects = [], rules = [], selectedObj = null, isDragging = false;
 
         function addGameObject(name, color) {
-            objects.push({ id: Date.now(), name, color, x: 50, y: 50, w: 60, h: 60, speed: 100 });
+            objects.push({ id: Date.now(), name, color, x: 50, y: 50, w: 60, h: 60 });
             draw();
         }
 
@@ -66,53 +61,24 @@
             });
         }
 
-        // Selection & Dragging logic
         canvas.addEventListener('mousedown', e => {
             const rect = canvas.getBoundingClientRect();
-            const mx = e.clientX - rect.left;
-            const my = e.clientY - rect.top;
-            
-            selectedObj = objects.find(o => mx >= o.x && mx <= o.x + o.w && my >= o.y && my <= o.y + o.h);
-            isDragging = !!selectedObj;
-            updateInspector();
-            draw();
+            selectedObj = objects.find(o => e.clientX-rect.left >= o.x && e.clientX-rect.left <= o.x+o.w && e.clientY-rect.top >= o.y && e.clientY-rect.top <= o.y+o.h);
+            updateInspector(); draw();
         });
-
-        canvas.addEventListener('mousemove', e => {
-            if (isDragging && selectedObj) {
-                const rect = canvas.getBoundingClientRect();
-                selectedObj.x = e.clientX - rect.left - (selectedObj.w/2);
-                selectedObj.y = e.clientY - rect.top - (selectedObj.h/2);
-                updateInspector();
-                draw();
-            }
-        });
-
-        canvas.addEventListener('mouseup', () => isDragging = false);
 
         function updateInspector() {
             const container = document.getElementById('inspector');
-            if(!selectedObj) return container.innerHTML = '<p class="text-gray-500 text-sm">Select an object to edit.</p>';
-            
-            const field = (label, val, prop) => `
-                <div class="flex flex-col">
-                    <label class="text-[10px] text-gray-400 uppercase font-bold mb-1">${label}</label>
-                    <input class="bg-gray-800 text-white border border-gray-700 rounded p-1 w-full focus:outline-none focus:ring-1 focus:ring-blue-500" 
-                           type="${typeof val === 'number' ? 'number' : 'text'}" 
-                           value="${val}" oninput="selectedObj.${prop}=this.value; draw()">
+            if(!selectedObj) return container.innerHTML = '<p class="text-gray-500 text-sm">Select object.</p>';
+            container.innerHTML = `
+                <div class="flex flex-col"><label class="text-[10px] text-gray-400 uppercase font-bold mb-1">Name</label><input class="bg-gray-800 text-white border border-gray-700 rounded p-1 w-full" value="${selectedObj.name}" oninput="selectedObj.name=this.value"></div>
+                <div class="grid grid-cols-2 gap-2">
+                    ${['x','y','w','h'].map(k => `<div class="flex flex-col"><label class="text-[10px] text-gray-400 uppercase font-bold mb-1">${k.toUpperCase()}</label><input class="bg-gray-800 text-white border border-gray-700 rounded p-1 w-full" type="number" value="${selectedObj[k]}" oninput="selectedObj.${k}=parseInt(this.value); draw()"></div>`).join('')}
                 </div>`;
-            
-            container.innerHTML = field('Object Name', selectedObj.name, 'name') + 
-                                  field('Position X', selectedObj.x, 'x') + 
-                                  field('Position Y', selectedObj.y, 'y') + 
-                                  field('Width', selectedObj.w, 'w') + 
-                                  field('Height', selectedObj.h, 'h') +
-                                  field('Speed', selectedObj.speed, 'speed');
         }
 
-        // Logic Builder
         function addRule() {
-            rules.push({ id: Date.now() });
+            rules.push({ id: Date.now(), subj: 'Player', cond: 'Collides With', obj: 'Enemy', act: 'Game Over' });
             renderRules();
         }
 
@@ -120,17 +86,16 @@
             document.getElementById('rulesContainer').innerHTML = rules.map(r => `
                 <div class="bg-gray-900 p-2 rounded flex items-center gap-2 text-[10px] border border-gray-700">
                     <span>WHEN</span>
-                    <select class="bg-gray-800 text-white p-1"><option>Player</option><option>Enemy</option></select>
-                    <select class="bg-gray-800 text-white p-1"><option>Collides With</option><option>Presses Key</option></select>
-                    <select class="bg-gray-800 text-white p-1"><option>Solid/Block</option><option>Coin</option></select>
+                    <select onchange="rules.find(x=>x.id==${r.id}).subj=this.value" class="bg-gray-800 text-white p-1"><option>Player</option><option>Enemy</option></select>
+                    <select onchange="rules.find(x=>x.id==${r.id}).cond=this.value" class="bg-gray-800 text-white p-1"><option>Collides With</option></select>
+                    <select onchange="rules.find(x=>x.id==${r.id}).obj=this.value" class="bg-gray-800 text-white p-1"><option>Enemy</option><option>Block</option></select>
                     <span>THEN</span>
-                    <select class="bg-gray-800 text-white p-1"><option>Destroy Object</option><option>Add +10 Score</option></select>
+                    <select onchange="rules.find(x=>x.id==${r.id}).act=this.value" class="bg-gray-800 text-white p-1"><option>Game Over</option><option>Destroy</option></select>
                     <button onclick="rules = rules.filter(x=>x.id!=${r.id}); renderRules()" class="ml-auto text-red-400 font-bold px-2">❌</button>
                 </div>
             `).join('');
         }
 
-        // Run Simulation
         document.getElementById('runBtn').onclick = () => {
             const modal = document.createElement("div");
             modal.id = "runModal";
@@ -138,8 +103,8 @@
             modal.innerHTML = `
                 <div class="bg-neutral-900 border border-gray-700 w-[800px] h-[500px] flex flex-col shadow-2xl">
                     <div class="h-12 bg-gray-900 flex justify-between items-center px-4 border-b border-gray-700">
-                        <span class="font-bold text-sm">Simulation Sandbox Active</span>
-                        <button onclick="document.getElementById('runModal').remove(); window.game.destroy(true);" class="bg-red-700 hover:bg-red-600 px-3 py-1 rounded text-xs font-bold">❌ Close Simulation</button>
+                        <span class="font-bold text-sm">Simulation Running</span>
+                        <button onclick="document.getElementById('runModal').remove(); window.game.destroy(true);" class="bg-red-700 px-3 py-1 rounded text-xs font-bold">❌ Close</button>
                     </div>
                     <div id="phaserContainer" class="flex-1 w-full h-full"></div>
                 </div>
@@ -152,22 +117,38 @@
                 scene: {
                     create: function() {
                         this.cursors = this.input.keyboard.createCursorKeys();
-                        this.player = this.physics.add.sprite(100, 100, null).setDisplaySize(50,50).setTint(0x3b82f6);
-                        this.player.setCollideWorldBounds(true);
-                        this.platform = this.physics.add.staticGroup();
-                        objects.filter(o => o.name === 'Block').forEach(b => this.platform.create(b.x+b.w/2, b.y+b.h/2, null).setDisplaySize(b.w, b.h).refreshBody());
-                        this.physics.add.collider(this.player, this.platform);
+                        this.physics.world.setBounds(0, 0, 800, 450);
+                        
+                        // Map our objects
+                        const physicsObjects = {};
+                        objects.forEach((o, i) => {
+                            let s = this.physics.add.sprite(o.x + o.w/2, o.y + o.h/2, null).setDisplaySize(o.w, o.h).setTint(o.color);
+                            if(o.name !== 'Player') s.setImmovable(true);
+                            else { s.setCollideWorldBounds(true); this.player = s; }
+                            physicsObjects[o.name + i] = s;
+                        });
+
+                        // Interpret Rules
+                        rules.forEach(r => {
+                            if(r.cond === 'Collides With' && r.act === 'Game Over') {
+                                this.physics.add.collider(this.player, Object.values(physicsObjects), () => {
+                                    this.physics.pause();
+                                    this.add.text(400, 225, 'GAME OVER', {fontSize: '50px', color: '#ff0000'}).setOrigin(0.5);
+                                });
+                            }
+                        });
                     },
                     update: function() {
-                        if (this.cursors.left.isDown) this.player.setVelocityX(-200);
-                        else if (this.cursors.right.isDown) this.player.setVelocityX(200);
-                        else this.player.setVelocityX(0);
-                        if (this.cursors.up.isDown && this.player.body.touching.down) this.player.setVelocityY(-400);
+                        if(this.player) {
+                            if (this.cursors.left.isDown) this.player.setVelocityX(-200);
+                            else if (this.cursors.right.isDown) this.player.setVelocityX(200);
+                            else this.player.setVelocityX(0);
+                            if (this.cursors.up.isDown && this.player.body.touching.down) this.player.setVelocityY(-400);
+                        }
                     }
                 }
             });
         };
-
         window.onresize = () => { canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight; draw(); };
         window.onresize();
     </script>

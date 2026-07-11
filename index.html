@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>ZenithEngine | Production Ready</title>
+    <title>ZenithEngine | Pro Build</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <style>
@@ -18,7 +18,6 @@
     </header>
 
     <main class="flex-1 flex overflow-hidden">
-        <!-- Sidebar: Objects -->
         <aside class="w-64 bg-gray-800 p-4 border-r border-gray-700">
             <h2 class="text-xs font-bold text-gray-400 uppercase mb-4">Object Library</h2>
             <button onclick="addGameObject('Player', 0x3b82f6)" class="w-full bg-blue-700 p-2 mb-2 rounded hover:bg-blue-600">Add Player</button>
@@ -26,19 +25,16 @@
             <button onclick="addGameObject('Block', 0x6b7280)" class="w-full bg-gray-600 p-2 mb-2 rounded hover:bg-gray-500">Add Solid Block</button>
         </aside>
 
-        <!-- Canvas -->
         <section class="flex-1 bg-gray-950 grid-bg relative cursor-crosshair">
             <canvas id="mainCanvas"></canvas>
         </section>
 
-        <!-- Inspector -->
         <aside class="w-72 bg-gray-800 p-4 border-l border-gray-700">
             <h2 class="text-xs font-bold text-gray-400 uppercase mb-4">Properties Inspector</h2>
             <div id="inspector" class="space-y-4"><p class="text-gray-500 text-sm italic">Select object to edit.</p></div>
         </aside>
     </main>
 
-    <!-- Logic Builder -->
     <footer class="h-56 bg-gray-800 border-t border-gray-700 p-4 flex flex-col">
         <div class="flex justify-between items-center mb-3">
             <h2 class="text-xs font-bold text-gray-400 uppercase">Logic Builder</h2>
@@ -66,16 +62,11 @@
             });
         }
 
-        // --- Drag & Drop Interaction ---
         canvas.addEventListener('mousedown', e => {
             const rect = canvas.getBoundingClientRect();
-            const mx = e.clientX - rect.left;
-            const my = e.clientY - rect.top;
+            const mx = e.clientX - rect.left, my = e.clientY - rect.top;
             selectedObj = objects.find(o => mx >= o.x && mx <= o.x + o.w && my >= o.y && my <= o.y + o.h);
-            if(selectedObj) {
-                isDragging = true;
-                dragOffset = { x: mx - selectedObj.x, y: my - selectedObj.y };
-            }
+            if(selectedObj) { isDragging = true; dragOffset = { x: mx - selectedObj.x, y: my - selectedObj.y }; }
             updateInspector(); draw();
         });
 
@@ -100,35 +91,36 @@
                 </div>`;
         }
 
-        function addRule() { rules.push({ id: Date.now(), subj: 'Player', cond: 'Collides With', obj: 'Enemy', act: 'Game Over' }); renderRules(); }
+        function addRule() {
+            rules.push({ id: Date.now(), subj: 'Player', cond: 'Collides With', target: 'None', act: 'Destroy Target Object' });
+            renderRules();
+        }
+
         function renderRules() {
+            const subjects = ["Player", "Enemy", "Solid/Block", "Coin", "Bullet", "Ghost", "Obstacle", "Boss Enemy"];
+            const conditions = ["Collides With", "Presses Key (Up/Space)", "Presses Key (Left/Right)", "Reaches Score", "Is Out of Bounds", "Timer Reaches Limit", "Health Drops to 0"];
+            const targets = ["None", "Player", "Enemy", "Solid/Block", "Coin", "Ghost", "Obstacle", "Boss Enemy", "Score 100"];
+            const actions = ["Destroy Target Object", "Destroy Self", "Game Over (Show Red Screen)", "Add +10 to Score HUD", "Add +50 to Score HUD", "Decrease Life/Health by 1", "Increase Life/Health by 1", "Jump / Apply Bounce", "Move Automatically", "Restart Level"];
+
             document.getElementById('rulesContainer').innerHTML = rules.map(r => `
-                <div class="bg-gray-900 p-2 rounded flex items-center gap-2 text-[10px] border border-gray-700">
-                    <span>WHEN</span>
-                    <select onchange="rules.find(x=>x.id==${r.id}).subj=this.value" class="bg-gray-800 text-white p-1"><option>Player</option><option>Enemy</option></select>
-                    <select onchange="rules.find(x=>x.id==${r.id}).cond=this.value" class="bg-gray-800 text-white p-1"><option>Collides With</option></select>
-                    <select onchange="rules.find(x=>x.id==${r.id}).obj=this.value" class="bg-gray-800 text-white p-1"><option>Enemy</option><option>Block</option></select>
-                    <span>THEN</span>
-                    <select onchange="rules.find(x=>x.id==${r.id}).act=this.value" class="bg-gray-800 text-white p-1"><option>Game Over</option><option>Destroy</option></select>
+                <div class="bg-gray-900 p-2 rounded flex items-center gap-2 text-[9px] border border-gray-700">
+                    <select class="bg-gray-800 text-white p-1" onchange="rules.find(x=>x.id==${r.id}).subj=this.value">${subjects.map(o=>`<option ${r.subj==o?'selected':''}>${o}</option>`).join('')}</select>
+                    <select class="bg-gray-800 text-white p-1" onchange="rules.find(x=>x.id==${r.id}).cond=this.value">${conditions.map(o=>`<option ${r.cond==o?'selected':''}>${o}</option>`).join('')}</select>
+                    <select class="bg-gray-800 text-white p-1" onchange="rules.find(x=>x.id==${r.id}).target=this.value">${targets.map(o=>`<option ${r.target==o?'selected':''}>${o}</option>`).join('')}</select>
+                    <select class="bg-gray-800 text-white p-1" onchange="rules.find(x=>x.id==${r.id}).act=this.value">${actions.map(o=>`<option ${r.act==o?'selected':''}>${o}</option>`).join('')}</select>
                     <button onclick="rules = rules.filter(x=>x.id!=${r.id}); renderRules()" class="ml-auto text-red-400 font-bold px-2">❌</button>
                 </div>
             `).join('');
         }
 
-        // --- Run Simulation ---
         document.getElementById('runBtn').onclick = () => {
             const modal = document.createElement("div");
             modal.id = "runModal";
             modal.className = "fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90";
-            modal.innerHTML = `
-                <div class="bg-neutral-900 border border-gray-700 w-[800px] h-[500px] flex flex-col shadow-2xl">
-                    <div class="h-12 bg-gray-900 flex justify-between items-center px-4 border-b border-gray-700">
-                        <span class="font-bold text-sm">Simulation Running</span>
-                        <button onclick="document.getElementById('runModal').remove(); window.game.destroy(true);" class="bg-red-700 px-3 py-1 rounded text-xs font-bold">❌ Close</button>
-                    </div>
-                    <div id="phaserContainer" class="flex-1 w-full h-full"></div>
-                </div>
-            `;
+            modal.innerHTML = `<div class="bg-neutral-900 border border-gray-700 w-[800px] h-[500px] flex flex-col shadow-2xl">
+                <div class="h-12 bg-gray-900 flex justify-between items-center px-4 border-b border-gray-700"><span class="font-bold text-sm">Simulation Running</span><button onclick="document.getElementById('runModal').remove(); window.game.destroy(true);" class="bg-red-700 px-3 py-1 rounded text-xs font-bold">❌ Close</button></div>
+                <div id="phaserContainer" class="flex-1 w-full h-full"></div>
+            </div>`;
             document.body.appendChild(modal);
 
             window.game = new Phaser.Game({
@@ -137,26 +129,18 @@
                 scene: {
                     create: function() {
                         this.cursors = this.input.keyboard.createCursorKeys();
-                        const statics = this.physics.add.staticGroup();
-                        const dynamics = this.physics.add.group();
-
+                        const statics = this.physics.add.staticGroup(), dynamics = this.physics.add.group();
                         objects.forEach(o => {
-                            let s;
-                            if(o.name === 'Player') {
-                                s = dynamics.create(o.x + o.w/2, o.y + o.h/2, null).setDisplaySize(o.w, o.h).setTint(o.color);
-                                s.setCollideWorldBounds(true);
-                                this.player = s;
-                            } else {
-                                s = statics.create(o.x + o.w/2, o.y + o.h/2, null).setDisplaySize(o.w, o.h).setTint(o.color).refreshBody();
-                            }
+                            let s = (o.name === 'Player') ? dynamics.create(o.x+o.w/2, o.y+o.h/2, null) : statics.create(o.x+o.w/2, o.y+o.h/2, null);
+                            s.setDisplaySize(o.w, o.h).setTint(o.color);
+                            if(o.name === 'Player') { s.setCollideWorldBounds(true); this.player = s; }
                         });
-
                         this.physics.add.collider(dynamics, statics);
                         rules.forEach(r => {
-                            if(r.act === 'Game Over') {
+                            if(r.act === 'Game Over (Show Red Screen)') {
                                 this.physics.add.overlap(this.player, statics, () => {
                                     this.physics.pause();
-                                    this.add.text(400, 225, 'GAME OVER', {fontSize: '50px', color: '#ff0000'}).setOrigin(0.5);
+                                    this.cameras.main.setBackgroundColor('#ff0000');
                                 });
                             }
                         });
@@ -172,7 +156,6 @@
                 }
             });
         };
-
         window.onresize = () => { canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight; draw(); };
         window.onresize();
     </script>

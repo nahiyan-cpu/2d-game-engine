@@ -2,13 +2,22 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>ZenithEngine | Production Build</title>
+    <title>ZenithEngine | Pro Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <style>
         .grid-bg { background-image: radial-gradient(#333 1px, transparent 1px); background-size: 20px 20px; }
-        /* Dark Theme Inputs */
-        .property-input { @apply w-full bg-slate-900 border border-slate-700 text-white p-2 rounded text-sm focus:border-blue-500 focus:outline-none transition; }
-        .property-label { @apply text-[10px] text-slate-400 uppercase font-bold tracking-wider; }
+        /* High-Contrast Dark Inputs */
+        .property-input { 
+            width: 100%; 
+            background-color: #0f172a !important; 
+            color: #ffffff !important; 
+            border: 1px solid #334155 !important; 
+            padding: 8px; 
+            border-radius: 4px; 
+            font-size: 14px;
+        }
+        .property-label { color: #94a3b8; text-transform: uppercase; font-size: 10px; font-weight: bold; margin-bottom: 4px; }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 h-screen flex flex-col overflow-hidden">
@@ -19,47 +28,51 @@
         <button id="runBtn" class="bg-green-600 hover:bg-green-500 px-6 py-1 rounded font-bold text-sm transition">▶️ RUN GAME</button>
     </header>
 
+    <!-- Main Workspace -->
     <main class="flex-1 flex overflow-hidden">
-        <!-- Asset Library -->
         <aside class="w-64 bg-gray-800 p-4 border-r border-gray-700">
             <h2 class="text-xs font-bold text-gray-400 uppercase mb-4">Object Library</h2>
-            <button onclick="addGameObject('Player', '#3b82f6')" class="w-full bg-blue-700 p-2 mb-2 rounded hover:bg-blue-600 transition">Add Player</button>
-            <button onclick="addGameObject('Enemy', '#ef4444')" class="w-full bg-red-700 p-2 mb-2 rounded hover:bg-red-600 transition">Add Enemy</button>
-            <button onclick="addGameObject('Block', '#6b7280')" class="w-full bg-gray-600 p-2 mb-2 rounded hover:bg-gray-500 transition">Add Solid Block</button>
+            <button onclick="addGameObject('Player', '#3b82f6')" class="w-full bg-blue-700 p-2 mb-2 rounded hover:bg-blue-600">Add Player</button>
+            <button onclick="addGameObject('Enemy', '#ef4444')" class="w-full bg-red-700 p-2 mb-2 rounded hover:bg-red-600">Add Enemy</button>
+            <button onclick="addGameObject('Block', '#6b7280')" class="w-full bg-gray-600 p-2 mb-2 rounded hover:bg-gray-500">Add Solid Block</button>
         </aside>
 
-        <!-- Canvas -->
         <section class="flex-1 bg-gray-950 grid-bg relative">
             <canvas id="mainCanvas"></canvas>
         </section>
 
-        <!-- Inspector -->
-        <aside class="w-72 bg-gray-800 p-4 border-l border-gray-700 flex flex-col gap-4">
-            <h2 class="text-xs font-bold text-gray-400 uppercase">Properties Inspector</h2>
-            <div id="inspector" class="flex flex-col gap-3">
-                <p class="text-slate-500 text-sm italic">Select an object to edit.</p>
+        <aside class="w-72 bg-gray-800 p-4 border-l border-gray-700">
+            <h2 class="text-xs font-bold text-gray-400 uppercase mb-4">Properties Inspector</h2>
+            <div id="inspector" class="space-y-4">
+                <p class="text-gray-500 text-sm italic">Select an object to edit.</p>
             </div>
         </aside>
     </main>
 
     <!-- Visual Scripting -->
-    <footer class="h-64 bg-gray-800 border-t border-gray-700 p-4 flex flex-col">
+    <footer class="h-56 bg-gray-800 border-t border-gray-700 p-4 flex flex-col">
         <div class="flex justify-between items-center mb-3">
-            <h2 class="text-xs font-bold text-gray-400 uppercase">Logic Builder (Event Sheet)</h2>
-            <button onclick="addRule()" class="bg-blue-700 hover:bg-blue-600 px-3 py-1 rounded text-xs transition">+ Add New Rule</button>
+            <h2 class="text-xs font-bold text-gray-400 uppercase">Logic Builder</h2>
+            <button onclick="addRule()" class="bg-blue-700 hover:bg-blue-600 px-3 py-1 rounded text-xs">+ Add New Rule</button>
         </div>
         <div id="rulesContainer" class="flex-1 overflow-y-auto space-y-2 pr-2"></div>
     </footer>
 
+    <!-- Phaser Modal Sandbox -->
+    <div id="gameModal" class="hidden fixed inset-0 bg-black z-50 flex flex-col">
+        <div class="h-12 bg-gray-900 border-b border-gray-700 flex justify-between items-center px-4">
+            <span class="font-bold text-sm">Game Simulation Active</span>
+            <button onclick="closeSimulation()" class="bg-red-700 hover:bg-red-600 px-3 py-1 rounded text-xs">❌ Close Simulation</button>
+        </div>
+        <div id="phaserContainer" class="flex-1"></div>
+    </div>
+
     <script>
         const canvas = document.getElementById('mainCanvas');
         const ctx = canvas.getContext('2d');
-        let objects = [];
-        let rules = [];
-        let selectedObj = null;
-        let isDragging = false;
+        let objects = [], rules = [], selectedObj = null, isDragging = false;
 
-        // --- Core Engine Logic ---
+        // --- Core ---
         function addGameObject(name, color) {
             objects.push({ id: Date.now(), name, color, x: 50, y: 50, w: 60, h: 60 });
             draw();
@@ -77,12 +90,10 @@
             });
         }
 
-        // --- Drag & Selection ---
+        // --- Interaction ---
         canvas.addEventListener('mousedown', e => {
             const rect = canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
-            selectedObj = objects.find(o => mouseX >= o.x && mouseX <= o.x + o.w && mouseY >= o.y && mouseY <= o.y + o.h);
+            selectedObj = objects.find(o => e.clientX-rect.left >= o.x && e.clientX-rect.left <= o.x+o.w && e.clientY-rect.top >= o.y && e.clientY-rect.top <= o.y+o.h);
             isDragging = !!selectedObj;
             updateInspector(); draw();
         });
@@ -90,24 +101,20 @@
         canvas.addEventListener('mousemove', e => {
             if (isDragging && selectedObj) {
                 const rect = canvas.getBoundingClientRect();
-                selectedObj.x = e.clientX - rect.left - (selectedObj.w / 2);
-                selectedObj.y = e.clientY - rect.top - (selectedObj.h / 2);
+                selectedObj.x = e.clientX - rect.left - (selectedObj.w/2);
+                selectedObj.y = e.clientY - rect.top - (selectedObj.h/2);
                 updateInspector(); draw();
             }
         });
 
         canvas.addEventListener('mouseup', () => isDragging = false);
 
-        // --- Inspector ---
         function updateInspector() {
             const container = document.getElementById('inspector');
-            if(!selectedObj) {
-                container.innerHTML = '<p class="text-slate-500 text-sm">Select an object to edit.</p>';
-                return;
-            }
+            if(!selectedObj) return container.innerHTML = '<p class="text-gray-500 text-sm">Select an object.</p>';
             container.innerHTML = `
                 <div class="flex flex-col"><label class="property-label">Name</label><input class="property-input" value="${selectedObj.name}" oninput="selectedObj.name=this.value"></div>
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-2 gap-2">
                     <div class="flex flex-col"><label class="property-label">X Pos</label><input class="property-input" type="number" value="${selectedObj.x}" oninput="selectedObj.x=parseInt(this.value); draw()"></div>
                     <div class="flex flex-col"><label class="property-label">Y Pos</label><input class="property-input" type="number" value="${selectedObj.y}" oninput="selectedObj.y=parseInt(this.value); draw()"></div>
                     <div class="flex flex-col"><label class="property-label">Width</label><input class="property-input" type="number" value="${selectedObj.w}" oninput="selectedObj.w=parseInt(this.value); draw()"></div>
@@ -116,39 +123,35 @@
             `;
         }
 
-        // --- Logic Builder ---
-        function addRule() {
-            rules.push({ id: Date.now() });
-            renderRules();
+        // --- Simulation ---
+        document.getElementById('runBtn').onclick = () => {
+            document.getElementById('gameModal').classList.remove('hidden');
+            const config = {
+                type: Phaser.AUTO, width: window.innerWidth, height: window.innerHeight - 48,
+                parent: 'phaserContainer', scene: { create() { this.add.text(10, 10, 'Engine Active: ' + rules.length + ' Rules Loaded', {color:'#fff'}); } }
+            };
+            window.game = new Phaser.Game(config);
+        };
+
+        function closeSimulation() {
+            document.getElementById('gameModal').classList.add('hidden');
+            if(window.game) window.game.destroy(true);
         }
 
+        // --- Logic ---
+        function addRule() { rules.push({ id: Date.now() }); renderRules(); }
         function renderRules() {
-            const container = document.getElementById('rulesContainer');
-            container.innerHTML = rules.map(rule => `
-                <div class="bg-slate-900 p-2 rounded flex gap-2 items-center text-xs border border-slate-700">
-                    <span>WHEN</span> <select class="bg-slate-800 p-1 rounded"><option>Player</option><option>Enemy</option></select>
-                    <span>Collides</span> <select class="bg-slate-800 p-1 rounded"><option>Block</option><option>Coin</option></select>
-                    <span>THEN</span> <select class="bg-slate-800 p-1 rounded"><option>Destroy</option><option>Score +10</option></select>
-                    <button onclick="deleteRule(${rule.id})" class="ml-auto text-red-400 font-bold px-2 hover:text-red-300">❌</button>
+            document.getElementById('rulesContainer').innerHTML = rules.map(r => `
+                <div class="bg-gray-900 p-2 rounded flex items-center gap-2 text-xs border border-gray-700">
+                    <span>WHEN</span> <select class="bg-gray-800 p-1"><option>Player</option></select> 
+                    <span>THEN</span> <select class="bg-gray-800 p-1"><option>Destroy</option></select>
+                    <button onclick="rules = rules.filter(x=>x.id!=${r.id}); renderRules()" class="ml-auto text-red-400 px-2">❌</button>
                 </div>
             `).join('');
         }
 
-        function deleteRule(id) {
-            rules = rules.filter(r => r.id !== id);
-            renderRules();
-        }
-
-        // --- Initialization ---
-        function resize() {
-            canvas.width = canvas.parentElement.clientWidth;
-            canvas.height = canvas.parentElement.clientHeight;
-            draw();
-        }
-        window.onresize = resize;
-        resize();
-
-        document.getElementById('runBtn').onclick = () => alert("Sandbox Initialized: " + rules.length + " Rules Applied.");
+        window.onresize = () => { canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight; draw(); };
+        window.onresize();
     </script>
 </body>
 </html>
